@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use blockifier::block_context::BlockContext;
+use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
 use pathfinder_common::{contract_address, ContractAddress};
 use starknet_api::core::PatriciaKey;
 
@@ -37,10 +37,13 @@ pub(super) fn construct_block_context(
             PatriciaKey::try_from(execution_state.sequencer_address.0.into_starkfelt())
                 .expect("Sequencer address overflow"),
         ),
-        deprecated_fee_token_address: fee_token_address,
-        fee_token_address,
+        // TODO: Fix fee token address
+        fee_token_addresses: FeeTokenAddresses {strk_fee_token_address: fee_token_address, eth_fee_token_address: fee_token_address},
         vm_resource_fee_cost: Arc::new(default_resource_fee_costs()),
-        gas_price: execution_state.gas_price.as_u128(),
+        gas_prices: GasPrices {
+            eth_l1_gas_price: 0,
+            strk_l1_gas_price: execution_state.gas_price.as_u128()
+        },
         invoke_tx_max_n_steps: 1_000_000,
         validate_max_n_steps: 1_000_000,
         max_recursion_depth: 50,

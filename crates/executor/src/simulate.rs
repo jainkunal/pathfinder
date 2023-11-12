@@ -1,6 +1,7 @@
 use blockifier::{
     transaction::transaction_execution::Transaction,
     transaction::{errors::TransactionExecutionError, transactions::ExecutableTransaction},
+    transaction::objects::FeeType,
 };
 use pathfinder_common::TransactionHash;
 use primitive_types::U256;
@@ -35,6 +36,7 @@ pub fn simulate(
         let _span = tracing::debug_span!("simulate", transaction_hash=%super::transaction::transaction_hash(&transaction), %block_number, %transaction_idx).entered();
 
         let transaction_type = transaction_type(&transaction);
+        let fee_type = fee_type(&transaction);
 
         let tx_info = transaction
             .execute(&mut state, &block_context, !skip_fee_charge, !skip_validate)
@@ -45,6 +47,8 @@ pub fn simulate(
                     tx_info.actual_fee = blockifier::fee::fee_utils::calculate_tx_fee(
                         &tx_info.actual_resources,
                         &block_context,
+                        // TODO: Fix this according to transaction type
+                        &fee_type,
                     )?
                 };
                 Ok(tx_info)
@@ -52,11 +56,6 @@ pub fn simulate(
 
         match tx_info {
             Ok(tx_info) => {
-                if let Some(revert_error) = tx_info.revert_error {
-                    tracing::info!(%revert_error, "Transaction reverted");
-                    return Err(CallError::Reverted(revert_error));
-                }
-
                 tracing::trace!(actual_fee=%tx_info.actual_fee.0, actual_resources=?tx_info.actual_resources, "Transaction simulation finished");
 
                 simulations.push(TransactionSimulation {
@@ -89,6 +88,7 @@ pub fn trace_one(
     for tx in transactions {
         let hash = transaction_hash(&tx);
         let tx_type = transaction_type(&tx);
+        // dbg!(hash);
         let tx_info = tx.execute(&mut state, &block_context, charge_fee, validate)?;
         let trace = to_trace(tx_type, tx_info)?;
         if hash == target_transaction_hash {
@@ -146,11 +146,19 @@ fn transaction_type(transaction: &Transaction) -> TransactionType {
     }
 }
 
+fn fee_type(transaction: &Transaction) -> FeeType {
+    match transaction {
+        Transaction::AccountTransaction(_) => FeeType::Strk,
+        Transaction::L1HandlerTransaction(_) => FeeType::Eth,
+    }
+}
+
 fn to_trace(
     transaction_type: TransactionType,
     execution_info: blockifier::transaction::objects::TransactionExecutionInfo,
 ) -> Result<TransactionTrace, TransactionExecutionError> {
     tracing::trace!(?execution_info, "Transforming trace");
+    // dbg!(execution_info.clone());
 
     let validate_invocation = execution_info
         .validate_call_info
@@ -179,11 +187,7 @@ fn to_trace(
         }
         TransactionType::Invoke => TransactionTrace::Invoke(InvokeTransactionTrace {
             validate_invocation,
-            execute_invocation: if let Some(reason) = execution_info.revert_error {
-                ExecuteInvocation::RevertedReason(reason)
-            } else {
-                ExecuteInvocation::FunctionInvocation(maybe_function_invocation?)
-            },
+            execute_invocation: ExecuteInvocation::FunctionInvocation(maybe_function_invocation?),
             fee_transfer_invocation,
         }),
         TransactionType::L1Handler => TransactionTrace::L1Handler(L1HandlerTransactionTrace {

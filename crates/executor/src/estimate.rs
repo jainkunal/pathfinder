@@ -3,6 +3,7 @@ use super::{error::CallError, execution_state::ExecutionState, types::FeeEstimat
 use blockifier::{
     transaction::transaction_execution::Transaction,
     transaction::transactions::ExecutableTransaction,
+    transaction::objects::FeeType,
 };
 use primitive_types::U256;
 
@@ -27,6 +28,7 @@ pub fn estimate(
                     tx_info.actual_fee = blockifier::fee::fee_utils::calculate_tx_fee(
                         &tx_info.actual_resources,
                         &block_context,
+                        &FeeType::Strk,
                     )?;
                 }
 

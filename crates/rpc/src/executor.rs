@@ -378,13 +378,13 @@ pub(crate) fn map_broadcasted_transaction(
 
             let deployed_contract_address = tx.deployed_contract_address();
 
-            let tx = starknet_api::transaction::DeployAccountTransaction {
+            let tx = starknet_api::transaction::DeployAccountTransactionV1 {
                 max_fee: starknet_api::transaction::Fee(u128::from_be_bytes(
                     tx.max_fee.0.to_be_bytes()[16..].try_into().unwrap(),
                 )),
-                version: starknet_api::transaction::TransactionVersion(
-                    tx.version.without_query_version().into(),
-                ),
+                // version: starknet_api::transaction::TransactionVersion(
+                //     tx.version.without_query_version().into(),
+                // ),
                 signature: starknet_api::transaction::TransactionSignature(
                     tx.signature.iter().map(|s| s.0.into_starkfelt()).collect(),
                 ),
@@ -403,7 +403,7 @@ pub(crate) fn map_broadcasted_transaction(
             };
 
             let tx = pathfinder_executor::Transaction::from_api(
-                starknet_api::transaction::Transaction::DeployAccount(tx),
+                starknet_api::transaction::Transaction::DeployAccount(starknet_api::transaction::DeployAccountTransaction::V1(tx)),
                 starknet_api::transaction::TransactionHash(transaction_hash.0.into_starkfelt()),
                 None,
                 None,
@@ -561,14 +561,14 @@ pub fn compose_executor_transaction(
                     .expect("No contract address overflow expected"),
             );
 
-            let tx = starknet_api::transaction::DeployAccountTransaction {
+            let tx = starknet_api::transaction::DeployAccountTransactionV1 {
                 max_fee: starknet_api::transaction::Fee(u128::from_be_bytes(
                     tx.max_fee.0.to_be_bytes()[16..].try_into().unwrap(),
                 )),
-                version: starknet_api::transaction::TransactionVersion(
-                    StarkFelt::new(tx.version.0.as_fixed_bytes().to_owned())
-                        .expect("No transaction version overflow expected"),
-                ),
+                // version: starknet_api::transaction::TransactionVersion(
+                //     StarkFelt::new(tx.version.0.as_fixed_bytes().to_owned())
+                //         .expect("No transaction version overflow expected"),
+                // ),
                 signature: starknet_api::transaction::TransactionSignature(
                     tx.signature
                         .into_iter()
@@ -590,7 +590,7 @@ pub fn compose_executor_transaction(
             };
 
             let tx = pathfinder_executor::Transaction::from_api(
-                starknet_api::transaction::Transaction::DeployAccount(tx),
+                starknet_api::transaction::Transaction::DeployAccount(starknet_api::transaction::DeployAccountTransaction::V1(tx)),
                 tx_hash,
                 None,
                 None,
